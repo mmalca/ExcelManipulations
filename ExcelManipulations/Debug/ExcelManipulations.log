@@ -1,0 +1,1 @@
+﻿C:\Users\malcabo\source\repos\ExcelManipulations\packages\Spire.XLS.Cpp.13.6.1\build\native\Spire.XLS.Cpp.targets(52,5): error : Spire.Xls for C++ Library error: Only 'x64' platforms are supported, but the current platform is 'Win32'.
