@@ -1,106 +1,88 @@
 #include "Spire.Xls.o.h"
 #include "isr84lib.cpp"
 
-
 using namespace Spire::Xls;
 //using namespace Spire::Common;
 using namespace std;
 
 int main()
 {
+  
+    // Initialize an instance of the Workbook class
+    intrusive_ptr<Workbook> workbook = new Workbook();
 
-    ifstream file;
-    string line;
-    string word;
-    vector<string> row = { 0 };
+    try {
+        //Load an XLSX or XLS file
+        workbook->LoadFromFile(L"C:/Users/malcabo/OneDrive - huji.ac.il/Specify/Collections/Scorpions/Scorpion-TestLatLon.xlsx");
+    }
+    catch (...) {
+        cerr << "Verify the file that you are trying to open exists on the path and is not in use..." << endl;
+    }
+
+
+    //Get the first worksheet (by default, a newly created workbook has 3 worksheets)
+    intrusive_ptr<Worksheet> sheet = dynamic_pointer_cast<Worksheet>(workbook->GetWorksheets()->Get(0));
+    
+    //Get row count
+    int rowCount = sheet->GetRows()->GetCount();
 
     int colLonITM = 53;
     int colLatITM = 54;
+    
+    int colLonNewWGS = 55;
+    int colLatNewWGS = 56;
 
     int currentLonITM = 0;
     int currentLatITM = 0;
 
-    double currentLatWGS = 0;
     double currentLonWGS = 0;
+    double currentLatWGS = 0;
 
-    file.open(L"C:/Users/malcabo/OneDrive - huji.ac.il/Specify/Collections/Scorpions/Scorpion-TestLatLon.xlsx");
+    ofstream logFile("outputLog.log");
 
-    if (file.is_open()) {
-        while (getline(file, line)) {
-            stringstream str(line);
-            while (getline(str, word, ','))
-                row.push_back(word);
-            //reading the current latlon
-            currentLonITM = stoi(row[colLonITM]);
-            currentLatITM = stoi(row[colLatITM]);
+   // if (logFile.is_open()) {
+        // Redirect cout to the log file
+        streambuf* coutbuf = cout.rdbuf();
+        cout.rdbuf(logFile.rdbuf());
+   // }
+    //else {
+        //cerr << "Unable to open the log file." << endl;
+    //}
 
-            if (currentLatITM == NULL || currentLonITM == NULL)
-                continue;
+    for (int row = 2; row <= rowCount; row++)
+    {
 
-            //convert to wgs
-            itm2wgs84(currentLonITM, currentLatITM, currentLatWGS, currentLonWGS);
-
-            //putting into the csv file the updated WGS
-            ////..............here: need to put the calculated wgs - lan and lon at the correct place(column) and check if the program working////
-
-        }
-    }
-    else
-        cout << "Error openning file!" << endl;
-    
-    file.close();
-    
-    return 0;
-    
-    
-    /*
-    //Initialize an instance of the Workbook class
-    intrusive_ptr<Workbook> workbook = new Workbook();
-    //Get the first worksheet (by default, a newly created workbook has 3 worksheets)
-    intrusive_ptr<Worksheet> sheet = dynamic_pointer_cast<Worksheet>(workbook->GetWorksheets()->Get(0));
-    //Load an XLSX or XLS file
-    workbook->LoadFromFile(L"C:/Users/malcabo/OneDrive - huji.ac.il/Specify/Collections/Scorpions/Scorpion-TestLatLon.xlsx");
-
-    //Get row count
-    int rowCount = sheet->GetRows()->GetCount();
-    
-    int colLonITM = 53;
-    int colLatITM = 54;
-
-    int colLonnewWGS = 0;
-    int colLatnewWGS = 0;
-
-
-    for (int row = 2; row < rowCount; row++) {
-        //read lat and lon of itm
-        int currentLonITM = sheet->GetRange(colLonITM, row)->GetHasNumber();
-        int currentLatITM = sheet->GetRange(colLatITM, row)->GetHasNumber();
-
-        cout << "currentLonITM = " << currentLonITM << endl;
-        cout << "currentLatITM = " << currentLatITM << endl;
-        break;
-
-        if (currentLatITM == NULL || currentLonITM == NULL)
+        if (currentLatITM = sheet->GetRange(row, colLatITM)->GetIsBlank()) {
+            cout << "No ITM information at row number " << row << endl;
             continue;
+        }
 
-        double currentLatWGS = 0;
-        double currentLonWGS = 0;
+        cout << "Reading row: " << row << " --> " ;
+        currentLonITM = sheet->GetRange(row, colLonITM)->GetNumberValue();
+        currentLatITM = sheet->GetRange(row, colLatITM)->GetNumberValue();
+        cout << "currentLonITM = " << currentLonITM << " ,  currentLatITM = " << currentLatITM << " -->  ";
+        cout << "DONE" << endl;
 
+        cout << "converting to WGS --> ";
         //convert to wgs
-        itm2wgs84(currentLonITM, currentLatITM, currentLatWGS, currentLonWGS);
+        itm2wgs84(currentLatITM, currentLonITM, currentLatWGS, currentLonWGS);
+        cout << "currentLatWGS = " << currentLatWGS << " , " << "currentLonWGS = " << currentLonWGS << endl;
 
-        //write to new lat lon columns
-        sheet->GetRange(colLonnewWGS, row)->SetNumberValue(currentLonWGS);
-        sheet->GetRange(colLatnewWGS, row)->SetNumberValue(currentLatWGS);
+        cout << "saving data to file at: " << row << " , " << colLonNewWGS << " --> ";
+        sheet->GetRange(row, colLonNewWGS)->SetNumberValue(currentLonWGS);
+        sheet->GetRange(row, colLatNewWGS)->SetNumberValue(currentLatWGS);
+        cout << "DONE" << endl;
 
     }
+    // Restore cout
+    std::cout.rdbuf(coutbuf);
 
+    // Close the log file
+    logFile.close();
 
-
-
-    /*add data to cells
-        sheet->GetRange(1, 3)->SetText(L"Salary");
-        sheet->GetRange(2, 3)->SetNumberValue(6100);
-    */
+    //save the updated excel file
+    workbook->Save();
+    workbook->Dispose();
+    workbook.reset();
 
 }
